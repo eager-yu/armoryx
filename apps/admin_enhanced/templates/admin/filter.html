@@ -1,11 +1,22 @@
 {% load i18n %}
 <div class="form-group mb-3">
-  <label for="filter-{{ title|slugify }}">{% blocktranslate with filter_title=title %}By {{ filter_title }}{% endblocktranslate %}</label>
-  <select id="filter-{{ title|slugify }}" class="form-control form-control-sm" onchange="if(this.value) { window.location.href = this.value; }">
-    {% for choice in choices %}
-      <option value="{{ choice.query_string|iriencode }}"{% if choice.selected %} selected{% endif %}>
-        {{ choice.display }}
-      </option>
-    {% endfor %}
-  </select>
+  <label for="filter-{{ title|slugify }}" class="filter-label">
+    <i class="fas fa-filter"></i> {% blocktranslate with filter_title=title %}By {{ filter_title }}{% endblocktranslate %}
+  </label>
+  <div class="input-group input-group-sm">
+    <select id="filter-{{ title|slugify }}" class="form-control filter-select" onchange="if(this.value) { window.location.href = this.value; }">
+      {% for choice in choices %}
+        <option value="{{ choice.query_string|iriencode }}"{% if choice.selected %} selected{% endif %}>
+          {{ choice.display }}
+        </option>
+      {% endfor %}
+    </select>
+    {% if not choices.0.selected %}
+      <div class="input-group-append">
+        <a href="{{ choices.0.query_string|iriencode }}" class="btn btn-outline-secondary" title="{% translate 'Clear filter' %}">
+          <i class="fas fa-times"></i>
+        </a>
+      </div>
+    {% endif %}
+  </div>
 </div>

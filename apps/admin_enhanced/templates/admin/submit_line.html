@@ -1,0 +1,23 @@
+{% load i18n admin_urls static %}
+<div class="submit-row d-flex justify-content-end align-items-center gap-2">
+  {% if show_save %}
+    <button type="submit" name="_save" class="btn btn-primary">
+      <i class="fas fa-save"></i> {% translate 'Save' %}
+    </button>
+  {% endif %}
+  {% if show_save_and_add_another %}
+    <button type="submit" name="_addanother" class="btn btn-secondary">
+      <i class="fas fa-plus"></i> {% translate 'Save and add another' %}
+    </button>
+  {% endif %}
+  {% if show_save_and_continue %}
+    <button type="submit" name="_continue" class="btn btn-info">
+      <i class="fas fa-save"></i> {% translate 'Save and continue editing' %}
+    </button>
+  {% endif %}
+  {% if show_delete_link %}
+    <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}" class="btn btn-danger">
+      <i class="fas fa-trash"></i> {% translate "Delete" %}
+    </a>
+  {% endif %}
+</div>

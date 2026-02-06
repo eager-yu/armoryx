@@ -1,112 +1,107 @@
-"""
-Template tags for admin_enhanced (AdminLTE 3).
-"""
-import django
 from django import template
-from django.contrib.admin.templatetags.admin_list import result_headers
+from django.contrib.admin.helpers import AdminForm
 
 register = template.Library()
 
-
-@register.simple_tag
-def get_admin_version():
-    """Return Django version for footer (Django admin does not provide this tag)."""
-    return django.get_version()
-
-# Font Awesome icon by app_label (AdminLTE sidebar)
-APP_ICONS = {
-    "auth": "users-cog",
-    "contenttypes": "sitemap",
-    "sessions": "clock",
-    "admin": "cog",
-}
-
-
-@register.filter
-def admin_app_icon(app):
-    """Return Font Awesome icon name for an app (from get_app_list)."""
-    app_label = getattr(app, "app_label", None) or (app.get("app_label") if hasattr(app, "get") else None)
-    return APP_ICONS.get(app_label or "", "folder")
-
-
 @register.filter
 def get_item(dictionary, key):
-    """Get item from dictionary by key."""
+    """Template filter to get item from dictionary"""
     if dictionary is None:
         return None
     return dictionary.get(key)
 
 
-@register.inclusion_tag('admin/column_selector.html')
+@register.filter
+def admin_app_icon(app):
+    """
+    Return Font Awesome icon name for Django admin app.
+    Maps app names to appropriate icons.
+    """
+    if not app:
+        return 'cube'
+    
+    app_name = app.get('app_label', '').lower() if isinstance(app, dict) else str(app).lower()
+    
+    # Map common app names to icons
+    icon_map = {
+        'auth': 'users',
+        'sessions': 'clock',
+        'contenttypes': 'database',
+        'admin': 'cog',
+        'instances': 'server',
+        'vpc': 'network-wired',
+        'celery_monitor': 'tasks',
+        'admin_enhanced': 'tools',
+    }
+    
+    # Check if app_name is in the map
+    if app_name in icon_map:
+        return icon_map[app_name]
+    
+    # Default icon
+    return 'cube'
+
+
+@register.simple_tag
+def get_admin_version():
+    """
+    Return Django version string for display in footer.
+    """
+    import django
+    return django.get_version()
+
+
+@register.inclusion_tag('admin/column_selector.html', takes_context=False)
 def column_selector(cl):
-    """列选择器组件"""
-    from django.contrib.admin.templatetags.admin_list import result_headers
-    from django.utils.html import strip_tags
-    headers = list(result_headers(cl))
-    # 检查第一个 header 是否是 action_checkbox
-    has_action_checkbox = headers and 'action-checkbox-column' in str(headers[0].get('class_attrib', ''))
+    """
+    Inclusion tag for column selector dropdown.
+    Prepares context for column_selector.html template.
+    """
+    if not cl.list_display:
+        return {'cl': cl}
     
-    # 获取 list_display，排除 action_buttons（固定列，不应该在选择器中）
-    list_display = list(cl.list_display) if cl.list_display else []
-    # 过滤掉 action_buttons 和 action_checkbox
-    list_display_filtered = [f for f in list_display if f not in ['action_buttons', 'action_checkbox']]
+    # Filter out action_checkbox and action_buttons from list_display
+    list_display_filtered = [field for field in cl.list_display if field not in ['action_checkbox', 'action_buttons']]
     
-    # 创建映射：display_index -> header (包含处理过的显示文本)
-    # 基于 list_display 的顺序，从 result_headers 中找到对应的 header
+    # Build header map for column headers
     header_map = {}
-    header_offset = 1 if has_action_checkbox else 0
-    
-    # 遍历过滤后的 list_display，为每个字段找到对应的 header
-    for display_index, field_name in enumerate(list_display_filtered):
-        # 找到 field_name 在原始 list_display 中的位置
-        original_index = list_display.index(field_name)
-        header_index = original_index + header_offset
-        if header_index < len(headers):
-            original_header = headers[header_index]
-            # 创建 header 的副本（如果是 dict）或直接使用
-            if isinstance(original_header, dict):
-                header = dict(original_header)
-            else:
-                # 如果不是 dict，尝试转换为 dict
-                header = dict(original_header) if hasattr(original_header, '__dict__') else {'text': str(original_header)}
-            
-            # 处理 header 文本，确保不为空
-            header_text = str(header.get('text', '')).strip()
-            if header_text:
-                # 移除 HTML 标签
-                header_text = strip_tags(header_text).strip()
-            # 如果文本仍为空，使用 field_name 作为后备
-            if not header_text:
-                header_text = field_name.replace('_', ' ').title()
-            header['display_text'] = header_text
-            header_map[display_index] = header
-    
-    # 创建字段名到原始索引的映射（用于 JavaScript）
     field_to_original_index = {}
-    for idx, field_name in enumerate(list_display):
-        if field_name not in ['action_buttons', 'action_checkbox']:
+    
+    for idx, field_name in enumerate(cl.list_display):
+        if field_name not in ['action_checkbox', 'action_buttons']:
+            # Get the display text for this field
+            try:
+                if hasattr(cl.model_admin, field_name):
+                    method = getattr(cl.model_admin, field_name)
+                    display_text = getattr(method, 'short_description', None) or field_name.replace('_', ' ').title()
+                elif hasattr(cl.model, field_name):
+                    field = cl.model._meta.get_field(field_name)
+                    display_text = field.verbose_name or field_name.replace('_', ' ').title()
+                else:
+                    display_text = field_name.replace('_', ' ').title()
+            except Exception:
+                display_text = field_name.replace('_', ' ').title()
+            
+            filtered_idx = list_display_filtered.index(field_name)
+            header_map[filtered_idx] = {
+                'display_text': display_text,
+                'field_name': field_name
+            }
             field_to_original_index[field_name] = idx
     
     return {
         'cl': cl,
-        'result_headers': headers,
+        'list_display_filtered': list_display_filtered,
         'header_map': header_map,
-        'list_display_filtered': list_display_filtered,  # 传递过滤后的列表
-        'field_to_original_index': field_to_original_index,  # 字段名到原始索引的映射
-        'has_action_checkbox': has_action_checkbox,
-    }
-    
-    return {
-        'cl': cl,
-        'result_headers': headers,
-        'header_map': header_map,
-        'has_action_checkbox': has_action_checkbox,
+        'field_to_original_index': field_to_original_index,
     }
 
 
-@register.inclusion_tag('admin/export_selector.html')
+@register.inclusion_tag('admin/export_selector.html', takes_context=False)
 def export_selector(cl):
-    """导出选择器组件"""
+    """
+    Inclusion tag for export selector dropdown.
+    """
     return {
         'cl': cl,
     }

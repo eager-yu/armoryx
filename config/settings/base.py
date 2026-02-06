@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "apps.logviewer",
     "apps.celery_monitor",
     "apps.instances",
+    "apps.vpc",
 ]
 
 MIDDLEWARE = [

@@ -336,4 +336,153 @@ window.performExport = function() {
     </div>
   </div>
 </div>
+
+<!-- View Object Modal -->
+<div class="modal fade" id="viewObjectModal" tabindex="-1" role="dialog" aria-labelledby="viewObjectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewObjectModalLabel">
+          <i class="fas fa-eye"></i> {% translate "View Details" %}
+        </h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="viewObjectModalBody">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">{% translate "Loading..." %}</span>
+          </div>
+          <p class="mt-2">{% translate "Loading..." %}</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          <i class="fas fa-times"></i> {% translate "Close" %}
+        </button>
+        <a href="#" id="viewObjectEditBtn" class="btn btn-primary" style="display: none;">
+          <i class="fas fa-edit"></i> {% translate "Edit" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// View object modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const viewButtons = document.querySelectorAll('.view-object-btn');
+  const modal = document.getElementById('viewObjectModal');
+  const modalBody = document.getElementById('viewObjectModalBody');
+  const modalTitle = document.getElementById('viewObjectModalLabel');
+  const editBtn = document.getElementById('viewObjectEditBtn');
+  
+  viewButtons.forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const modalUrl = this.getAttribute('data-modal-url');
+      const appLabel = this.getAttribute('data-app-label');
+      const modelName = this.getAttribute('data-model-name');
+      const objectId = this.getAttribute('data-object-id');
+      
+      // Update modal title
+      modalTitle.innerHTML = '<i class="fas fa-eye"></i> {% translate "View Details" %}';
+      
+      // Show loading state
+      modalBody.innerHTML = `
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">{% translate "Loading..." %}</span>
+          </div>
+          <p class="mt-2">{% translate "Loading..." %}</p>
+        </div>
+      `;
+      
+      // Hide edit button initially
+      editBtn.style.display = 'none';
+      
+      // Show modal
+      if (typeof jQuery !== 'undefined' && typeof jQuery.fn.modal !== 'undefined') {
+        jQuery('#viewObjectModal').modal('show');
+      } else {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        
+        let backdrop = document.getElementById('viewObjectModalBackdrop');
+        if (!backdrop) {
+          backdrop = document.createElement('div');
+          backdrop.className = 'modal-backdrop fade show';
+          backdrop.id = 'viewObjectModalBackdrop';
+          document.body.appendChild(backdrop);
+        }
+      }
+      
+      // Load content via AJAX
+      fetch(modalUrl + '?readonly=1', {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+      .then(response => {
+        if (!response.ok) {
+          // Try to parse error response
+          return response.json().then(err => {
+            throw new Error(err.error || 'Network response was not ok');
+          }).catch(() => {
+            throw new Error('Network response was not ok: ' + response.status);
+          });
+        }
+        return response.text();
+      })
+      .then(html => {
+        // Check if response is JSON error
+        try {
+          const jsonData = JSON.parse(html);
+          if (jsonData.error) {
+            throw new Error(jsonData.error);
+          }
+        } catch (e) {
+          // Not JSON, continue with HTML
+        }
+        
+        modalBody.innerHTML = html;
+        
+        // Show edit button - construct URL manually
+        const editUrl = '/' + appLabel + '/' + modelName + '/' + objectId + '/change/';
+        editBtn.href = editUrl;
+        editBtn.style.display = 'inline-block';
+      })
+      .catch(error => {
+        console.error('Error loading view:', error);
+        const errorMessage = error.message || '{% translate "Error loading content. Please try again." %}';
+        modalBody.innerHTML = `
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i> 
+            <strong>{% translate "Error" %}:</strong> ${errorMessage}
+            <br><small>URL: ${modalUrl}?readonly=1</small>
+          </div>
+        `;
+      });
+    });
+  });
+  
+  // Clean up on modal close
+  if (modal) {
+    modal.addEventListener('hidden.bs.modal', function() {
+      modalBody.innerHTML = '';
+      editBtn.style.display = 'none';
+    });
+    
+    // Also handle Bootstrap 4 modal events
+    jQuery(modal).on('hidden.bs.modal', function() {
+      modalBody.innerHTML = '';
+      editBtn.style.display = 'none';
+    });
+  }
+});
+</script>
 {% endblock %}

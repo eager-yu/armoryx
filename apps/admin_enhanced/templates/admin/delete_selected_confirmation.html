@@ -1,0 +1,95 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{% translate "Delete multiple objects" %} | {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    {% if has_view_permission %}
+      <li class="breadcrumb-item"><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    {% else %}
+      <li class="breadcrumb-item">{{ opts.verbose_name_plural|capfirst }}</li>
+    {% endif %}
+    <li class="breadcrumb-item active">{% translate 'Delete' %}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card card-danger">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-exclamation-triangle"></i> {% translate "Delete multiple objects" %}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if perms_lacking %}
+          <div class="alert alert-warning">
+            <h5><i class="icon fas fa-exclamation-triangle"></i> {% translate "Warning" %}</h5>
+            <p>{% blocktranslate %}You don't have permission to delete the following {{ objects_name }}:{% endblocktranslate %}</p>
+            <ul class="mt-3 mb-0">
+              {% for obj in perms_lacking %}
+                <li>{{ obj }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% elif protected %}
+          <div class="alert alert-warning">
+            <h5><i class="icon fas fa-exclamation-triangle"></i> {% translate "Warning" %}</h5>
+            <p>{% blocktranslate %}You can't delete the following {{ objects_name }} because they have protected related objects:{% endblocktranslate %}</p>
+            <ul class="mt-3 mb-0">
+              {% for obj in protected %}
+                <li>{{ obj }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <div class="alert alert-danger">
+            <h5><i class="icon fas fa-trash"></i> {% translate "Are you sure?" %}</h5>
+            <p>{% blocktranslate %}Are you sure you want to delete the selected {{ objects_name }}?{% endblocktranslate %}</p>
+          </div>
+
+          {% if queryset %}
+            <div class="card card-outline card-info mt-3">
+              <div class="card-header">
+                <h3 class="card-title">{% translate "Objects" %}</h3>
+              </div>
+              <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                  {% for obj in queryset %}
+                    <li class="list-group-item">{{ obj|safe }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          {% endif %}
+
+          <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div>
+              {% for obj in queryset %}
+                <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+              {% endfor %}
+              <input type="hidden" name="action" value="delete_selected">
+              <input type="hidden" name="post" value="yes">
+              <div class="form-actions">
+                <button type="submit" class="btn btn-danger">
+                  <i class="fas fa-trash"></i> {% translate "Yes, I'm sure" %}
+                </button>
+                <a href="{% url opts|admin_urlname:'changelist' %}" class="btn btn-secondary">
+                  <i class="fas fa-times"></i> {% translate "No, take me back" %}
+                </a>
+              </div>
+            </div>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

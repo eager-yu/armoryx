@@ -11,63 +11,136 @@
 
 {% if not is_popup %}
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
-  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
-  &rsaquo; {% if has_view_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
-  &rsaquo; {% if add %}{% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}{% else %}{{ original|truncatewords:"18" }}{% endif %}
-</div>
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    {% if has_view_permission %}
+      <li class="breadcrumb-item"><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    {% else %}
+      <li class="breadcrumb-item">{{ opts.verbose_name_plural|capfirst }}</li>
+    {% endif %}
+    <li class="breadcrumb-item active">
+      {% if add %}
+        {% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}
+      {% else %}
+        {{ original|truncatewords:"18" }}
+      {% endif %}
+    </li>
+  </ol>
+</nav>
 {% endblock %}
 {% endif %}
 
 {% block content %}
-<div class="card">
-  <div class="card-header">
-    <h3 class="card-title">{% if add %}{% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}{% else %}{{ original|truncatewords:"18" }}{% endif %}</h3>
-    {% block object-tools %}
-      {% if change and not is_popup %}
-      <div class="card-tools">
-        <ul class="object-tools list-unstyled mb-0">
-          {% block object-tools-items %}
-            {% change_form_object_tools %}
-          {% endblock %}
-        </ul>
-      </div>
-      {% endif %}
-    {% endblock %}
-  </div>
-  <div class="card-body">
-    <div id="content-main">
-      <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="{{ opts.model_name }}_form" novalidate>{% csrf_token %}{% block form_top %}{% endblock %}
-        <div>
-          {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
-          {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
-          {% if save_on_top %}{% block submit_buttons_top %}{% submit_row %}{% endblock %}{% endif %}
-          {% if errors %}
-            <p class="errornote">
-              {% blocktranslate count counter=errors|length %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
-            </p>
-            {{ adminform.form.non_field_errors }}
+<div class="row">
+  <div class="col-12">
+    <div class="card card-primary card-outline">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-{% if is_readonly %}eye{% elif add %}plus{% else %}edit{% endif %}"></i>
+          {% if add %}
+            {% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}
+          {% elif is_readonly %}
+            {% blocktranslate with name=opts.verbose_name %}View {{ name }}{% endblocktranslate %}: {{ original|truncatewords:"18" }}
+          {% else %}
+            {{ original|truncatewords:"18" }}
           {% endif %}
-          {% block field_sets %}
-            {% for fieldset in adminform %}
-              {% include "admin/includes/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
-            {% endfor %}
-          {% endblock %}
-          {% block after_field_sets %}{% endblock %}
-          {% block inline_field_sets %}
-            {% for inline_admin_formset in inline_admin_formsets %}
-              {% include inline_admin_formset.opts.template %}
-            {% endfor %}
-          {% endblock %}
-          {% block after_related_objects %}{% endblock %}
-          {% block submit_buttons_bottom %}{% submit_row %}{% endblock %}
+        </h3>
+        {% block object-tools %}
+          {% if change and not is_popup and not is_readonly %}
+          <div class="card-tools">
+            {% block object-tools-items %}
+              {% change_form_object_tools %}
+            {% endblock %}
+          </div>
+          {% endif %}
+        {% endblock %}
+      </div>
+      
+      <div class="card-body">
+        {% if not is_readonly %}
+          {% if save_on_top %}
+            <div class="mb-3">
+              {% block submit_buttons_top %}{% submit_row %}{% endblock %}
+            </div>
+          {% endif %}
+        {% endif %}
+        
+        {% if errors %}
+          <div class="alert alert-danger alert-dismissible fade show">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+            <h5><i class="icon fas fa-ban"></i> {% translate "Error" %}</h5>
+            {% blocktranslate count counter=errors|length %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
+            {{ adminform.form.non_field_errors }}
+          </div>
+        {% endif %}
+        
+        {% if is_readonly %}
+          {# 只读模式：不显示表单，只显示字段值 #}
+          <div class="readonly-view">
+        {% else %}
+          {# 编辑模式：显示表单 #}
+          <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="{{ opts.model_name }}_form" novalidate>
+            {% csrf_token %}
+            {% block form_top %}{% endblock %}
+            
+            {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+            {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+        {% endif %}
+        
+        {% block field_sets %}
+          {% for fieldset in adminform %}
+            {% include "admin/includes/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
+          {% endfor %}
+        {% endblock %}
+        
+        {% block after_field_sets %}{% endblock %}
+        
+        {% block inline_field_sets %}
+          {% for inline_admin_formset in inline_admin_formsets %}
+            {% include inline_admin_formset.opts.template %}
+          {% endfor %}
+        {% endblock %}
+        
+        {% block after_related_objects %}{% endblock %}
+        
+        {% if is_readonly %}
+          </div>
+        {% else %}
+          {% block submit_buttons_bottom %}{% endblock %}
+          
           {% block admin_change_form_document_ready %}
             <script id="django-admin-form-add-constants" src="{% static 'admin/js/change_form.js' %}" {% if adminform and add %}data-model-name="{{ opts.model_name }}"{% endif %} async></script>
           {% endblock %}
           {% prepopulated_fields_js %}
+          </form>
+        {% endif %}
+      </div>
+      
+      {% if not save_on_top %}
+      <div class="card-footer bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <a href="{% url opts|admin_urlname:'changelist' %}" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> {% translate "Back to list" %}
+            </a>
+          </div>
+          <div>
+            {% if not is_readonly %}
+              {% submit_row %}
+            {% else %}
+              {% if change %}
+                {% url opts|admin_urlname:'change' original.pk|admin_urlquote as edit_url %}
+                <a href="{{ edit_url }}" class="btn btn-primary">
+                  <i class="fas fa-edit"></i> {% translate "Edit" %}
+                </a>
+              {% endif %}
+            {% endif %}
+          </div>
         </div>
-      </form>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

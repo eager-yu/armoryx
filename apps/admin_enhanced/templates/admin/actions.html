@@ -1,44 +1,50 @@
 {% load i18n %}
-<div class="actions mb-3 p-2 bg-light border rounded">
+<div class="actions-holder">
   {% block actions %}
-    <div class="d-flex flex-wrap align-items-center">
-      {% block actions-form %}
-        <div class="d-flex align-items-center mr-2">
-          {% for field in action_form %}
-            {% if field.label %}
-              <label class="mb-0 mr-2">{{ field.label }}</label>
-              <div style="min-width: 200px;">
-                {{ field }}
-              </div>
-            {% else %}
-              <div style="min-width: 200px;">
-                {{ field }}
-              </div>
+    <div class="card card-outline card-info">
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center">
+          {% block actions-form %}
+            <div class="d-flex align-items-center actions-form-group">
+              {% for field in action_form %}
+                {% if field.label %}
+                  <label class="actions-label mb-0 mr-2">
+                    <i class="fas fa-tasks"></i> {{ field.label }}
+                  </label>
+                {% endif %}
+                <div class="actions-select-wrapper">
+                  {{ field }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endblock %}
+          {% block actions-submit %}
+            <button type="submit" class="btn btn-sm btn-success actions-submit-btn" name="index" value="{{ action_index|default:0 }}">
+              <i class="fas fa-play-circle"></i> {% translate "Run" %}
+            </button>
+          {% endblock %}
+          {% block actions-counter %}
+            {% if actions_selection_counter %}
+              <span class="action-counter ml-3" data-actions-icnt="{{ cl.result_list|length }}">
+                <i class="fas fa-check-square"></i> {{ selection_note }}
+              </span>
+              {% if cl.result_count != cl.result_list|length %}
+                <span class="all d-none">{{ selection_note_all }}</span>
+                <span class="question d-none ml-2">
+                  <a role="button" href="#" class="btn btn-sm btn-outline-info" title="{% translate 'Click here to select the objects across all pages' %}">
+                    <i class="fas fa-check-double"></i> {% blocktranslate with cl.result_count as total_count %}Select all {{ total_count }} {{ module_name }}{% endblocktranslate %}
+                  </a>
+                </span>
+                <span class="clear d-none ml-2">
+                  <a role="button" href="#" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-times"></i> {% translate "Clear selection" %}
+                  </a>
+                </span>
+              {% endif %}
             {% endif %}
-          {% endfor %}
+          {% endblock %}
         </div>
-      {% endblock %}
-      {% block actions-submit %}
-        <button type="submit" class="btn btn-sm btn-primary ml-1" name="index" value="{{ action_index|default:0 }}">
-          <i class="fas fa-play"></i> {% translate "Run" %}
-        </button>
-      {% endblock %}
-      {% block actions-counter %}
-        {% if actions_selection_counter %}
-          <span class="action-counter ml-3 text-muted" data-actions-icnt="{{ cl.result_list|length }}">{{ selection_note }}</span>
-          {% if cl.result_count != cl.result_list|length %}
-            <span class="all d-none">{{ selection_note_all }}</span>
-            <span class="question d-none ml-2">
-              <a role="button" href="#" class="btn btn-sm btn-link" title="{% translate 'Click here to select the objects across all pages' %}">
-                {% blocktranslate with cl.result_count as total_count %}Select all {{ total_count }} {{ module_name }}{% endblocktranslate %}
-              </a>
-            </span>
-            <span class="clear d-none ml-2">
-              <a role="button" href="#" class="btn btn-sm btn-link">{% translate "Clear selection" %}</a>
-            </span>
-          {% endif %}
-        {% endif %}
-      {% endblock %}
+      </div>
     </div>
   {% endblock %}
 </div>

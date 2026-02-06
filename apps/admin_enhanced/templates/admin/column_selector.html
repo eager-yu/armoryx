@@ -5,36 +5,40 @@
     <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="columnSelectorDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
       <i class="fas fa-columns"></i> {% translate 'Column Configuration' %}
     </button>
-    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="columnSelectorDropdown" style="min-width: 250px; padding: 0.5rem;" data-stop-propagation="true">
-      <h6 class="dropdown-header">{% translate 'Select columns to display' %}</h6>
-      <div class="px-2" style="max-height: 300px; overflow-y: auto;">
+    <div class="dropdown-menu dropdown-menu-right column-selector-menu" aria-labelledby="columnSelectorDropdown" data-stop-propagation="true">
+      <h6 class="dropdown-header column-selector-header">
+        <i class="fas fa-columns"></i> {% translate 'Select columns to display' %}
+      </h6>
+      <div class="column-selector-list">
         {% for field_name in list_display_filtered %}
           {% with forloop.counter0 as col_index %}
             {% if header_map|get_item:col_index %}
               {% with header=header_map|get_item:col_index %}
-                <div class="form-check">
-                  <input class="form-check-input column-checkbox" 
+                <div class="column-selector-item">
+                  <input class="column-checkbox" 
                          type="checkbox" 
                          value="{{ field_name }}" 
                          id="col_{{ field_name }}"
                          data-column="{{ field_name }}"
                          data-index="{{ col_index }}">
-                  <label class="form-check-label" for="col_{{ field_name }}">
-                    {{ header.display_text|default:field_name|capfirst }}
+                  <label class="column-selector-label" for="col_{{ field_name }}">
+                    <span class="checkbox-custom"></span>
+                    <span class="label-text">{{ header.display_text|default:field_name|capfirst }}</span>
                   </label>
                 </div>
               {% endwith %}
             {% else %}
               {# 如果没有对应的 header，使用 field_name #}
-              <div class="form-check">
-                <input class="form-check-input column-checkbox" 
+              <div class="column-selector-item">
+                <input class="column-checkbox" 
                        type="checkbox" 
                        value="{{ field_name }}" 
                        id="col_{{ field_name }}"
                        data-column="{{ field_name }}"
                        data-index="{{ col_index }}">
-                <label class="form-check-label" for="col_{{ field_name }}">
-                  {{ field_name|capfirst }}
+                <label class="column-selector-label" for="col_{{ field_name }}">
+                  <span class="checkbox-custom"></span>
+                  <span class="label-text">{{ field_name|capfirst }}</span>
                 </label>
               </div>
             {% endif %}
@@ -42,9 +46,9 @@
         {% endfor %}
       </div>
       <div class="dropdown-divider"></div>
-      <div class="px-2">
+      <div class="column-selector-actions">
         <button type="button" class="btn btn-sm btn-primary btn-block" id="applyColumnBtn">
-          {% translate 'Apply' %}
+          <i class="fas fa-check"></i> {% translate 'Apply' %}
         </button>
       </div>
     </div>
@@ -156,35 +160,7 @@
     waitForTableAndInit();
   }
   
-  // 保留原有的事件监听器代码
-  document.addEventListener('DOMContentLoaded', function() {
-    
-    // 阻止点击复选框和标签时关闭下拉菜单
-    const dropdownMenu = document.querySelector('#columnSelectorDropdown').nextElementSibling;
-    if (dropdownMenu) {
-      dropdownMenu.addEventListener('click', function(e) {
-        // 如果点击的是复选框、标签或 Apply 按钮，阻止事件冒泡
-        if (e.target.classList.contains('column-checkbox') || 
-            e.target.classList.contains('form-check-label') ||
-            e.target.closest('.form-check') ||
-            e.target.id === 'applyColumnBtn') {
-          e.stopPropagation();
-        }
-      });
-    }
-    
-    // Apply 按钮点击事件
-    const applyBtn = document.getElementById('applyColumnBtn');
-    if (applyBtn) {
-      applyBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        applyColumnSelection();
-      });
-    }
-  });
-  
-  // 应用列选择
+  // 应用列选择函数 - 必须在事件监听器之前定义
   function applyColumnSelection() {
     const checkedColumns = Array.from(document.querySelectorAll('.column-checkbox:checked'))
       .map(function(cb) { return cb.value; });
@@ -225,6 +201,47 @@
   
   // 导出到全局，以便调试
   window.applyColumnSelection = applyColumnSelection;
+  
+  // 保留原有的事件监听器代码
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // 阻止点击下拉菜单内容时关闭下拉菜单（除了 Apply 按钮）
+    const dropdownMenu = document.querySelector('.column-selector-menu');
+    if (dropdownMenu) {
+      dropdownMenu.addEventListener('click', function(e) {
+        // 如果点击的是 Apply 按钮，不阻止（让下面的处理程序处理）
+        if (e.target.id === 'applyColumnBtn' || e.target.closest('#applyColumnBtn')) {
+          return;
+        }
+        // 阻止其他所有内部点击事件冒泡到 Bootstrap 的下拉菜单处理程序
+        e.stopPropagation();
+      });
+    }
+    
+    // Apply 按钮点击事件 - 使用捕获阶段，确保在其他阻止事件之前执行
+    document.addEventListener('click', function(e) {
+      const applyBtn = e.target.closest('#applyColumnBtn');
+      if (applyBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Apply button clicked');
+        applyColumnSelection();
+        return false;
+      }
+    }, true); // 使用捕获阶段，确保在其他处理程序之前执行
+    
+    // 为复选框和标签添加点击事件处理，阻止下拉菜单关闭
+    document.addEventListener('click', function(e) {
+      // 如果点击的是 Apply 按钮，不阻止（已经在上面处理了）
+      if (e.target.id === 'applyColumnBtn' || e.target.closest('#applyColumnBtn')) {
+        return;
+      }
+      // 如果点击的是列选择器内的其他元素，阻止事件冒泡
+      if (e.target.closest('.column-selector-menu')) {
+        e.stopPropagation();
+      }
+    }, true); // 使用捕获阶段，确保在其他处理程序之前执行
+  });
   
   // 应用列显示/隐藏
   function applyColumnVisibility(visibleColumns) {

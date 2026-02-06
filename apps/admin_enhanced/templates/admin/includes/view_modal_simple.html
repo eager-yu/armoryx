@@ -1,0 +1,54 @@
+{% load i18n admin_enhanced %}
+<div class="readonly-view">
+  {% for fieldset in fieldsets %}
+    {% if fieldset.name %}
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header">
+        <h3 class="card-title">
+          {% if fieldset.description %}
+            <i class="fas fa-info-circle"></i>
+          {% endif %}
+          {{ fieldset.name }}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if fieldset.description %}
+          <div class="alert alert-info mb-3">
+            <i class="fas fa-info-circle"></i> {{ fieldset.description|safe }}
+          </div>
+        {% endif %}
+        <div class="row">
+          {% for field_name in fieldset.fields %}
+            {% if field_name in field_values %}
+            <div class="form-group col-md-{% if fieldset.fields|length == 1 %}12{% elif fieldset.fields|length == 2 %}6{% else %}4{% endif %}">
+              <label class="form-label">{{ field_labels|get_item:field_name|default:field_name|capfirst }}</label>
+              <div class="readonly">{{ field_values|get_item:field_name|default:"-" }}</div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="row">
+      {% for field_name in fieldset.fields %}
+        {% if field_name in field_values %}
+        <div class="form-group col-md-{% if fieldset.fields|length == 1 %}12{% elif fieldset.fields|length == 2 %}6{% else %}4{% endif %}">
+          <label class="form-label">
+            {% for key, label in field_labels.items %}
+              {% if key == field_name %}{{ label }}{% endif %}
+            {% endfor %}
+            {% if field_name not in field_labels %}{{ field_name|capfirst }}{% endif %}
+          </label>
+          <div class="readonly">
+            {% for key, value in field_values.items %}
+              {% if key == field_name %}{{ value|default:"-" }}{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>

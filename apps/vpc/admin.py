@@ -3,36 +3,28 @@ from django.utils.html import format_html, mark_safe
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from apps.admin_enhanced.admin import ReadonlyMixin
-from .models import Instance
+from .models import Vpc
 
 
-@admin.register(Instance)
-class InstanceAdmin(ReadonlyMixin, admin.ModelAdmin):
+@admin.register(Vpc)
+class VpcAdmin(ReadonlyMixin, admin.ModelAdmin):
     list_display = [
-        "instance_id",
-        "instance_name",
+        "vpc_id",
+        "vpc_name",
         "account",
         "region",
-        "ip",
-        "state",
-        "security_groupid",
-        "create_time",
         "action_buttons",
     ]
-    list_display_links = ["instance_id"]  # 确保操作列不被链接
+    list_display_links = ["vpc_id"]
     list_filter = [
         "account",
         "region",
-        "state"
     ]
     search_fields = [
-        "instance_id",
-        "instance_name",
+        "vpc_id",
+        "vpc_name",
         "account",
-        "ip",
-        "security_groupid",
     ]
-    readonly_fields = ["create_time"]
     list_per_page = 50
     
     def action_buttons(self, obj):

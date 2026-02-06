@@ -12,4 +12,9 @@ urlpatterns = [
         views.export_changelist,
         name='export_changelist'
     ),
+    path(
+        '<str:app_label>/<str:model_name>/<int:object_id>/view/',
+        views.view_object_modal,
+        name='view_object_modal'
+    ),
 ]

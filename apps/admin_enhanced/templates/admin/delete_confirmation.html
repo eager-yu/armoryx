@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{% translate "Delete" %} {{ object|truncatewords:"18" }} | {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    {% if has_view_permission %}
+      <li class="breadcrumb-item"><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    {% else %}
+      <li class="breadcrumb-item">{{ opts.verbose_name_plural|capfirst }}</li>
+    {% endif %}
+    {% if has_change_permission %}
+      <li class="breadcrumb-item"><a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">{{ object|truncatewords:"18" }}</a></li>
+    {% else %}
+      <li class="breadcrumb-item">{{ object|truncatewords:"18" }}</li>
+    {% endif %}
+    <li class="breadcrumb-item active">{% translate 'Delete' %}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card card-danger">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-exclamation-triangle"></i> {% translate "Delete confirmation" %}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if perms_lacking %}
+          <div class="alert alert-warning">
+            <h5><i class="icon fas fa-exclamation-triangle"></i> {% translate "Warning" %}</h5>
+            <p>{% blocktranslate with escaped_object=object %}You don't have permission to delete the {{ object_name }} "{{ escaped_object }}". Please contact your administrator.{% endblocktranslate %}</p>
+          </div>
+        {% elif protected %}
+          <div class="alert alert-warning">
+            <h5><i class="icon fas fa-exclamation-triangle"></i> {% translate "Warning" %}</h5>
+            <p>{% blocktranslate with escaped_object=object %}You can't delete {{ object_name }} "{{ escaped_object }}". The following protected related objects would be deleted:{% endblocktranslate %}</p>
+            <ul class="mt-3 mb-0">
+              {% for obj in protected %}
+                <li>{{ obj }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <div class="alert alert-danger">
+            <h5><i class="icon fas fa-trash"></i> {% translate "Are you sure?" %}</h5>
+            <p>{% blocktranslate with escaped_object=object %}Are you sure you want to delete the {{ object_name }} "{{ escaped_object }}"?{% endblocktranslate %}</p>
+          </div>
+
+          <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div>
+              <input type="hidden" name="post" value="yes">
+              {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+              {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+              <div class="form-actions">
+                <button type="submit" class="btn btn-danger">
+                  <i class="fas fa-trash"></i> {% translate "Yes, I'm sure" %}
+                </button>
+                <a href="{% url opts|admin_urlname:'changelist' %}" class="btn btn-secondary">
+                  <i class="fas fa-times"></i> {% translate "No, take me back" %}
+                </a>
+              </div>
+            </div>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

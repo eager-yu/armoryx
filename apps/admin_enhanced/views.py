@@ -5,8 +5,10 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, gettext
 from django.db import models
+from django.template.loader import render_to_string
+from django.shortcuts import get_object_or_404
 
 
 @staff_member_required
@@ -264,3 +266,197 @@ def export_csv(data_rows, field_labels, model_name):
     response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{model_name}_export.csv"'
     return response
+
+
+@staff_member_required
+def view_object_modal(request, app_label, model_name, object_id):
+    """
+    Return readonly HTML content for modal view.
+    """
+    from django.utils.translation import gettext as _
+    
+    def return_error_html(error_msg, status_code=500):
+        """Return HTML error message instead of JSON"""
+        error_html = f'''
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle"></i> 
+          <strong>{_("Error")}:</strong> {error_msg}
+        </div>
+        '''
+        return HttpResponse(error_html, status=status_code)
+    
+    try:
+        from django.apps import apps
+        model = apps.get_model(app_label, model_name)
+    except LookupError as e:
+        return return_error_html(f'Model not found: {str(e)}', 404)
+    except Exception as e:
+        return return_error_html(f'Error loading model: {str(e)}', 500)
+    
+    # Get the ModelAdmin instance
+    if model not in admin.site._registry:
+        return return_error_html(_('ModelAdmin not found'), 404)
+    
+    model_admin = admin.site._registry[model]
+    
+    try:
+        # Get the object
+        obj = get_object_or_404(model, pk=object_id)
+    except Exception as e:
+        return return_error_html(f'Error loading object: {str(e)}', 500)
+    
+    # Check permissions
+    try:
+        has_view_permission = getattr(model_admin, 'has_view_permission', None)
+        if has_view_permission:
+            has_perm = has_view_permission(request, obj)
+        else:
+            has_perm = model_admin.has_change_permission(request, obj)
+        
+        if not has_perm:
+            return return_error_html(_('Permission denied'), 403)
+    except Exception as e:
+        return return_error_html(f'Permission check error: {str(e)}', 500)
+    
+    try:
+        # Use a simpler approach: directly use Django admin's changeform_view with readonly mode
+        # Create a temporary request with readonly=1 parameter
+        from django.test import RequestFactory
+        from copy import copy
+        
+        # Get fieldsets from ModelAdmin
+        fieldsets = model_admin.get_fieldsets(request, obj)
+        if not fieldsets:
+            # If no fieldsets defined, get all fields
+            from django.db import models as db_models
+            model_fields = []
+            for field in model._meta.get_fields():
+                if isinstance(field, db_models.Field) and not isinstance(field, db_models.ManyToManyRel):
+                    if not isinstance(field, db_models.AutoField):
+                        model_fields.append(field.name)
+            fieldsets = [(None, {'fields': model_fields})]
+        
+        # Prepare field values and labels
+        field_values = {}
+        field_labels = {}
+        
+        for fieldset_name, fieldset_options in fieldsets:
+            for field_name in fieldset_options.get('fields', []):
+                if isinstance(field_name, str):
+                    try:
+                        # Get field value
+                        field = model._meta.get_field(field_name)
+                        value = getattr(obj, field_name, None)
+                        
+                        # Format value based on field type
+                        from django.db import models as db_models
+                        if isinstance(field, db_models.BooleanField):
+                            field_values[field_name] = gettext('Yes') if value else gettext('No')
+                        elif isinstance(field, db_models.DateTimeField) and value:
+                            from django.utils import timezone
+                            if timezone.is_aware(value):
+                                field_values[field_name] = timezone.localtime(value).strftime('%Y-%m-%d %H:%M:%S')
+                            else:
+                                field_values[field_name] = value.strftime('%Y-%m-%d %H:%M:%S')
+                        elif isinstance(field, db_models.DateField) and value:
+                            field_values[field_name] = value.strftime('%Y-%m-%d')
+                        elif isinstance(field, db_models.ForeignKey) and value:
+                            field_values[field_name] = str(value)
+                        elif isinstance(field, db_models.ManyToManyField):
+                            field_values[field_name] = ', '.join([str(item) for item in value.all()]) if value else ''
+                        elif value is None:
+                            field_values[field_name] = '-'
+                        else:
+                            field_values[field_name] = str(value)
+                        
+                        # Get field label
+                        field_labels[field_name] = field.verbose_name or field_name.replace('_', ' ').title()
+                    except Exception as e:
+                        field_values[field_name] = f'Error: {str(e)}'
+                        field_labels[field_name] = field_name.replace('_', ' ').title()
+        
+        # Create simplified fieldsets structure for template
+        simplified_fieldsets = []
+        for fieldset_name, fieldset_options in fieldsets:
+            simplified_fieldsets.append({
+                'name': fieldset_name,
+                'description': fieldset_options.get('description', ''),
+                'fields': fieldset_options.get('fields', [])
+            })
+        
+        # Render using a simpler template
+        # Convert dict to list of tuples for easier template access
+        field_values_list = list(field_values.items())
+        field_labels_list = list(field_labels.items())
+        
+        context = {
+            'fieldsets': simplified_fieldsets,
+            'field_values': field_values,
+            'field_labels': field_labels,
+            'field_values_list': field_values_list,
+            'field_labels_list': field_labels_list,
+            'original': obj,
+            'opts': model._meta,
+        }
+        
+        try:
+            html = render_to_string('admin/includes/view_modal_simple.html', context, request=request)
+            return HttpResponse(html)
+        except Exception as template_error:
+            # Fallback: try using AdminForm approach
+            try:
+                from django.contrib.admin.helpers import AdminForm
+                from django import forms
+                
+                class ReadonlyForm(forms.ModelForm):
+                    class Meta:
+                        model = model
+                        fields = '__all__'
+                
+                form = ReadonlyForm(instance=obj)
+                for field_name in form.fields:
+                    form.fields[field_name].disabled = True
+                
+                readonly_fields = list(field_values.keys())
+                adminform = AdminForm(form, fieldsets, {}, readonly_fields=readonly_fields, model_admin=model_admin)
+                
+                context = {
+                    'adminform': adminform,
+                    'inline_admin_formsets': [],
+                    'original': obj,
+                    'opts': model._meta,
+                    'is_readonly': True,
+                }
+                
+                html = render_to_string('admin/includes/view_modal_content.html', context, request=request)
+                return HttpResponse(html)
+            except Exception as fallback_error:
+                import traceback
+                error_detail = traceback.format_exc()
+                error_html = f'''
+                <div class="alert alert-danger">
+                  <i class="fas fa-exclamation-triangle"></i> 
+                  <strong>{_("Error")}:</strong> {str(template_error)}
+                  <br><small>Fallback also failed: {str(fallback_error)}</small>
+                  <details style="margin-top: 10px;">
+                    <summary>{_("Error Details")}</summary>
+                    <pre style="white-space: pre-wrap; font-size: 0.8em;">{error_detail}</pre>
+                  </details>
+                </div>
+                '''
+                return HttpResponse(error_html, status=500)
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        from django.utils.translation import gettext as _
+        error_html = f'''
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle"></i> 
+          <strong>{_("Error")}:</strong> Error rendering view: {str(e)}
+          <details style="margin-top: 10px;">
+            <summary>{_("Error Details")}</summary>
+            <pre style="white-space: pre-wrap; font-size: 0.8em;">{error_detail}</pre>
+          </details>
+        </div>
+        '''
+        return HttpResponse(error_html, status=500)

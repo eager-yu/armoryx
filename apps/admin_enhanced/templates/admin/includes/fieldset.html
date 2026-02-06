@@ -1,0 +1,97 @@
+{% load i18n admin_modify %}
+{% if fieldset.name %}
+<div class="card card-outline card-primary mb-3">
+  <div class="card-header">
+    <h3 class="card-title">
+      {% if fieldset.description %}
+        <i class="fas fa-info-circle"></i>
+      {% endif %}
+      {{ fieldset.name }}
+    </h3>
+  </div>
+  <div class="card-body">
+    {% if fieldset.description %}
+      <div class="alert alert-info mb-3">
+        <i class="fas fa-info-circle"></i> {{ fieldset.description|safe }}
+      </div>
+    {% endif %}
+    <div class="row">
+      {% for line in fieldset %}
+        {% for field in line %}
+          <div class="form-group col-md-{% if line.fields|length == 1 %}12{% elif line.fields|length == 2 %}6{% else %}4{% endif %}">
+            {% if field.is_checkbox %}
+              <div class="form-check">
+                {{ field.field }}{{ field.label_tag }}
+                {% if field.field.help_text %}
+                  <small class="form-text text-muted">{{ field.field.help_text|safe }}</small>
+                {% endif %}
+                {% if field.field.errors %}
+                  <div class="invalid-feedback d-block">
+                    {{ field.field.errors }}
+                  </div>
+                {% endif %}
+              </div>
+            {% else %}
+              {{ field.label_tag }}
+              {% if field.is_readonly %}
+                <div class="readonly">{{ field.contents }}</div>
+              {% else %}
+                {{ field.field }}
+              {% endif %}
+              {% if field.field.help_text %}
+                <small class="form-text text-muted">
+                  <i class="fas fa-question-circle"></i> {{ field.field.help_text|safe }}
+                </small>
+              {% endif %}
+              {% if field.field.errors %}
+                <div class="invalid-feedback d-block">
+                  {{ field.field.errors }}
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="row">
+  {% for line in fieldset %}
+    {% for field in line %}
+      <div class="form-group col-md-{% if line.fields|length == 1 %}12{% elif line.fields|length == 2 %}6{% else %}4{% endif %}">
+        {% if field.is_checkbox %}
+          <div class="form-check">
+            {{ field.field }}{{ field.label_tag }}
+            {% if field.field.help_text %}
+              <small class="form-text text-muted">{{ field.field.help_text|safe }}</small>
+            {% endif %}
+            {% if field.field.errors %}
+              <div class="invalid-feedback d-block">
+                {{ field.field.errors }}
+              </div>
+            {% endif %}
+          </div>
+        {% else %}
+          {{ field.label_tag }}
+          {% if field.is_readonly %}
+            <div class="readonly">{{ field.contents }}</div>
+          {% else %}
+            {{ field.field }}
+          {% endif %}
+          {% if field.field.help_text %}
+            <small class="form-text text-muted">
+              <i class="fas fa-question-circle"></i> {{ field.field.help_text|safe }}
+            </small>
+          {% endif %}
+          {% if field.field.errors %}
+            <div class="invalid-feedback d-block">
+              {{ field.field.errors }}
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+{% endif %}

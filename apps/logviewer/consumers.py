@@ -1,0 +1,17 @@
+"""
+WebSocket consumer for real-time log viewer (placeholder for stage 3).
+"""
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+
+
+class LogViewerConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        await self.accept()
+        await self.send(text_data=json.dumps({"type": "welcome", "message": "Log viewer connected."}))
+
+    async def disconnect(self, close_code):
+        pass
+
+    async def receive(self, text_data=None, bytes_data=None):
+        pass

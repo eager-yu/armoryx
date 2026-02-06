@@ -1,0 +1,339 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list admin_enhanced %}
+
+{% block title %}{% if cl.formset and cl.formset.errors %}{% translate "Error:" %} {% endif %}{{ block.super }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  {% if cl.formset or action_form %}
+    <script src="{% url 'admin:jsi18n' %}"></script>
+  {% endif %}
+  {{ media.css }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{{ media.js }}
+<script src="{% static 'admin/js/filters.js' %}" defer></script>
+{% if cl.list_display %}
+<script>
+// 导出相关的全局变量和函数 - 必须在按钮之前定义
+window.exportConfig = {
+  currentFormat: null,
+  appLabel: '{{ cl.opts.app_label }}',
+  modelName: '{{ cl.opts.model_name }}'
+};
+
+// 处理导出按钮点击
+window.handleExportClick = function(format, event) {
+  console.log('handleExportClick called with format:', format);
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
+  window.exportConfig.currentFormat = format;
+  
+  // 关闭下拉菜单
+  const dropdown = document.getElementById('exportSelectorDropdown');
+  if (dropdown) {
+    dropdown.classList.remove('show');
+    dropdown.setAttribute('aria-expanded', 'false');
+    const menu = dropdown.nextElementSibling;
+    if (menu && menu.classList.contains('dropdown-menu')) {
+      menu.classList.remove('show');
+    }
+  }
+  
+  // 显示模态框
+  if (typeof showExportModal === 'function') {
+    showExportModal();
+  } else {
+    // 如果函数还没定义，等待一下再试
+    setTimeout(function() {
+      if (typeof showExportModal === 'function') {
+        showExportModal();
+      } else {
+        console.error('showExportModal function not found');
+      }
+    }, 100);
+  }
+  
+  return false;
+};
+
+// 更新选中行数
+function updateSelectedCount() {
+  const selectedCheckboxes = document.querySelectorAll('#changelist-form input.action-select:checked');
+  const selectedCount = selectedCheckboxes.length;
+  const selectedCountEl = document.getElementById('selectedCount');
+  if (selectedCountEl) {
+    selectedCountEl.textContent = selectedCount;
+  }
+  
+  const exportSelectedRadio = document.getElementById('exportSelected');
+  const exportAllRadio = document.getElementById('exportAll');
+  if (exportSelectedRadio && exportAllRadio) {
+    if (selectedCount === 0) {
+      exportSelectedRadio.disabled = true;
+      exportAllRadio.checked = true;
+    } else {
+      exportSelectedRadio.disabled = false;
+    }
+  }
+}
+
+// 显示模态框
+function showExportModal() {
+  console.log('showExportModal called, format:', window.exportConfig.currentFormat);
+  updateSelectedCount();
+  
+  const modal = document.getElementById('exportModal');
+  if (!modal) {
+    console.error('Export modal not found!');
+    return;
+  }
+  
+  if (typeof jQuery !== 'undefined' && typeof jQuery.fn.modal !== 'undefined') {
+    jQuery('#exportModal').modal('show');
+  } else {
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    
+    let backdrop = document.getElementById('exportModalBackdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      backdrop.id = 'exportModalBackdrop';
+      document.body.appendChild(backdrop);
+    }
+  }
+}
+
+// 执行导出
+window.performExport = function() {
+  if (!window.exportConfig.currentFormat) {
+    console.error('No export format selected');
+    return;
+  }
+  
+  const exportScope = document.querySelector('input[name="exportScope"]:checked');
+  if (!exportScope) {
+    console.error('No export scope selected');
+    return;
+  }
+  
+  const selectedCheckboxes = document.querySelectorAll('#changelist-form input.action-select:checked');
+  const visibleColumns = [];
+  const storageKey = 'admin_column_config_' + window.exportConfig.appLabel + '_' + window.exportConfig.modelName;
+  const savedColumns = localStorage.getItem(storageKey);
+  
+  if (savedColumns) {
+    try {
+      const parsed = JSON.parse(savedColumns);
+      visibleColumns.push(...parsed);
+    } catch (e) {
+      console.error('Error parsing saved columns:', e);
+    }
+  }
+  
+  if (visibleColumns.length === 0) {
+    const allCheckboxes = document.querySelectorAll('input.column-checkbox:checked');
+    allCheckboxes.forEach(function(cb) {
+      visibleColumns.push(cb.value);
+    });
+  }
+  
+  if (visibleColumns.length === 0) {
+    const allCheckboxes = document.querySelectorAll('input.column-checkbox');
+    allCheckboxes.forEach(function(cb) {
+      visibleColumns.push(cb.value);
+    });
+  }
+  
+  const filteredColumns = visibleColumns.filter(function(col) {
+    return col !== 'action_buttons' && col !== 'action_checkbox';
+  });
+  
+  let url = `/export/${window.exportConfig.appLabel}/${window.exportConfig.modelName}/${window.exportConfig.currentFormat}/?`;
+  
+  filteredColumns.forEach(function(col) {
+    url += `columns[]=${encodeURIComponent(col)}&`;
+  });
+  
+  if (exportScope.value === 'selected') {
+    const selectedIds = Array.from(selectedCheckboxes).map(function(cb) {
+      return cb.value;
+    });
+    if (selectedIds.length === 0) {
+      alert('{% translate "Please select at least one row to export." %}');
+      return;
+    }
+    selectedIds.forEach(function(id) {
+      url += `selected_ids[]=${encodeURIComponent(id)}&`;
+    });
+  }
+  
+  const modal = document.getElementById('exportModal');
+  if (modal) {
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.modal !== 'undefined') {
+      jQuery('#exportModal').modal('hide');
+    } else {
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+      const backdrop = document.getElementById('exportModalBackdrop');
+      if (backdrop) {
+        backdrop.remove();
+      }
+    }
+  }
+  
+  console.log('Exporting to:', url);
+  window.location.href = url;
+};
+</script>
+{% endif %}
+{% endblock %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'admin:app_list' app_label=cl.opts.app_label %}">{{ cl.opts.app_config.verbose_name }}</a></li>
+    <li class="breadcrumb-item active">{{ cl.opts.verbose_name_plural|capfirst }}</li>
+  </ol>
+</nav>
+{% endblock %}
+{% endif %}
+
+{% block content %}
+<div class="row">
+  <!-- Main content -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">{{ cl.opts.verbose_name_plural|capfirst }}</h3>
+        <div class="card-tools">
+          {% block object-tools %}
+            {% change_list_object_tools %}
+          {% endblock %}
+        </div>
+      </div>
+      
+      <div class="card-body">
+        <!-- Filters (if filters exist) -->
+        {% if cl.has_filters %}
+        <div class="card card-primary card-outline mb-3">
+          <div class="card-header">
+            <h3 class="card-title" style="font-size: 0.9rem;">{% translate 'Filter' %}</h3>
+            <div class="card-tools">
+              {% if cl.has_active_filters %}
+                <a href="{{ cl.clear_all_filters_qs }}" class="btn btn-tool btn-sm" title="{% translate 'Clear all filters' %}">
+                  <i class="fas fa-times"></i>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0.75rem;">
+            <div class="row">
+              {% if cl.is_facets_optional %}
+                <div class="col-md-12 mb-2">
+                  {% if cl.add_facets %}
+                    <a href="{{ cl.remove_facet_link }}" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">{% translate "Hide counts" %}</a>
+                  {% else %}
+                    <a href="{{ cl.add_facet_link }}" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">{% translate "Show counts" %}</a>
+                  {% endif %}
+                </div>
+              {% endif %}
+              {% for spec in cl.filter_specs %}
+                <div class="col-md-3">
+                  {% admin_list_filter cl spec %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Search form -->
+        {% block search %}
+          {% search_form cl %}
+        {% endblock %}
+        
+        <!-- Date hierarchy and Column selector in same row -->
+        {% block date_hierarchy %}
+          {% if cl.date_hierarchy or cl.list_display %}
+            <div class="mb-2 d-flex justify-content-end align-items-center">
+              {% if cl.date_hierarchy %}
+                <div class="mr-2">
+                  {% date_hierarchy cl %}
+                </div>
+              {% endif %}
+              {% if cl.list_display %}
+                <div class="d-flex align-items-center">
+                  {% column_selector cl %}
+                  <div class="ml-2">
+                    {% export_selector cl %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endblock %}
+        
+        <!-- Form errors -->
+        {% if cl.formset and cl.formset.errors %}
+          <div class="alert alert-danger alert-dismissible fade show">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            {% blocktranslate count counter=cl.formset.total_error_count %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
+            {{ cl.formset.non_form_errors }}
+          </div>
+        {% endif %}
+        
+        <!-- Main form with table -->
+        <form id="changelist-form" method="post"{% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %} novalidate>
+          {% csrf_token %}
+          {% if cl.formset %}
+            <div>{{ cl.formset.management_form }}</div>
+          {% endif %}
+          
+          <!-- Results table -->
+          {% block result_list %}
+            {% result_list cl %}
+            
+            <!-- Actions (bottom only) -->
+            {% if action_form and cl.show_admin_actions %}
+              {% admin_actions %}
+            {% endif %}
+          {% endblock %}
+          
+          <!-- Pagination -->
+          {% block pagination %}
+            <div class="row mt-3">
+              <div class="col-md-6">
+                {% pagination cl %}
+              </div>
+              <div class="col-md-6 text-right">
+                {% if cl.formset and cl.result_count %}
+                  <input type="submit" name="_save" class="btn btn-primary" value="{% translate 'Save' %}">
+                {% endif %}
+              </div>
+            </div>
+          {% endblock %}
+        </form>
+      </div>
+      
+      <div class="card-footer">
+        <small class="text-muted">
+          {{ cl.result_count }} {% if cl.result_count == 1 %}{{ cl.opts.verbose_name }}{% else %}{{ cl.opts.verbose_name_plural }}{% endif %}
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

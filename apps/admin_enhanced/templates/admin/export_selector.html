@@ -1,0 +1,93 @@
+{% load i18n static admin_enhanced %}
+{% if cl.list_display %}
+<div class="d-inline-block">
+  <div class="dropdown">
+    <button class="btn btn-success btn-sm dropdown-toggle" type="button" id="exportSelectorDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      <i class="fas fa-download"></i> {% translate 'Export' %}
+    </button>
+    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="exportSelectorDropdown" style="min-width: 200px; padding: 0.5rem;">
+      <h6 class="dropdown-header">{% translate 'Export Format' %}</h6>
+      <div class="px-2">
+        <button type="button" class="btn btn-sm btn-success btn-block mb-2" id="exportExcelBtn" data-format="excel" onclick="window.handleExportClick('excel', event);">
+          <i class="fas fa-file-excel"></i> {% translate 'Export to Excel' %}
+        </button>
+        <button type="button" class="btn btn-sm btn-info btn-block" id="exportJsonBtn" data-format="json" onclick="window.handleExportClick('json', event);">
+          <i class="fas fa-file-code"></i> {% translate 'Export to JSON' %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Confirmation Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" role="dialog" aria-labelledby="exportModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exportModalLabel">{% translate 'Export Options' %}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>{% translate 'What would you like to export?' %}</p>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="radio" name="exportScope" id="exportAll" value="all" checked>
+          <label class="form-check-label" for="exportAll">
+            {% translate 'All rows in the database table' %}
+            <small class="text-muted d-block">({% blocktranslate with count=cl.result_count %}{{ count }} total rows{% endblocktranslate %})</small>
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="exportScope" id="exportSelected" value="selected">
+          <label class="form-check-label" for="exportSelected">
+            {% translate 'Selected rows only' %}
+            <small class="text-muted d-block">(<span id="selectedCount">0</span> {% translate 'rows selected' %})</small>
+          </label>
+        </div>
+        <div class="alert alert-info mt-3 mb-0">
+          <small>
+            <i class="fas fa-info-circle"></i> 
+            {% translate 'Only visible columns will be exported based on your column selection.' %}
+          </small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">{% translate 'Cancel' %}</button>
+        <button type="button" class="btn btn-primary" id="confirmExportBtn" onclick="window.performExport();">
+          <i class="fas fa-download"></i> {% translate 'Export' %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 监听复选框变化以更新选中行数（函数已在 change_list.html 的 extrahead 中定义）
+(function() {
+  function initCheckboxListener() {
+    const form = document.getElementById('changelist-form');
+    if (form) {
+      form.addEventListener('change', function(e) {
+        if (e.target.type === 'checkbox' && e.target.classList.contains('action-select')) {
+          if (typeof updateSelectedCount === 'function') {
+            updateSelectedCount();
+          }
+        }
+      });
+    }
+    // 初始化选中行数
+    if (typeof updateSelectedCount === 'function') {
+      updateSelectedCount();
+    }
+  }
+  
+  // 等待 DOM 加载
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCheckboxListener);
+  } else {
+    initCheckboxListener();
+  }
+})();
+</script>
+{% endif %}

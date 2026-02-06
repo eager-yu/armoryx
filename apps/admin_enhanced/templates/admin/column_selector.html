@@ -1,0 +1,321 @@
+{% load i18n static admin_enhanced %}
+{% if cl.list_display %}
+<div class="d-inline-block">
+  <div class="dropdown">
+    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="columnSelectorDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      <i class="fas fa-columns"></i> {% translate 'Column Configuration' %}
+    </button>
+    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="columnSelectorDropdown" style="min-width: 250px; padding: 0.5rem;" data-stop-propagation="true">
+      <h6 class="dropdown-header">{% translate 'Select columns to display' %}</h6>
+      <div class="px-2" style="max-height: 300px; overflow-y: auto;">
+        {% for field_name in list_display_filtered %}
+          {% with forloop.counter0 as col_index %}
+            {% if header_map|get_item:col_index %}
+              {% with header=header_map|get_item:col_index %}
+                <div class="form-check">
+                  <input class="form-check-input column-checkbox" 
+                         type="checkbox" 
+                         value="{{ field_name }}" 
+                         id="col_{{ field_name }}"
+                         data-column="{{ field_name }}"
+                         data-index="{{ col_index }}">
+                  <label class="form-check-label" for="col_{{ field_name }}">
+                    {{ header.display_text|default:field_name|capfirst }}
+                  </label>
+                </div>
+              {% endwith %}
+            {% else %}
+              {# 如果没有对应的 header，使用 field_name #}
+              <div class="form-check">
+                <input class="form-check-input column-checkbox" 
+                       type="checkbox" 
+                       value="{{ field_name }}" 
+                       id="col_{{ field_name }}"
+                       data-column="{{ field_name }}"
+                       data-index="{{ col_index }}">
+                <label class="form-check-label" for="col_{{ field_name }}">
+                  {{ field_name|capfirst }}
+                </label>
+              </div>
+            {% endif %}
+          {% endwith %}
+        {% endfor %}
+      </div>
+      <div class="dropdown-divider"></div>
+      <div class="px-2">
+        <button type="button" class="btn btn-sm btn-primary btn-block" id="applyColumnBtn">
+          {% translate 'Apply' %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // 获取字段名到原始索引的映射（排除 action_buttons）
+  const fieldToIndexMap = {};
+  {% for field_name, original_index in field_to_original_index.items %}
+    fieldToIndexMap['{{ field_name }}'] = {{ original_index }};
+  {% endfor %}
+  
+  const allColumns = [
+    {% for field_name in list_display_filtered %}
+      '{{ field_name }}'{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+  
+  // 从 localStorage 读取保存的列配置
+  const storageKey = 'admin_column_config_{{ cl.opts.app_label }}_{{ cl.opts.model_name }}';
+  
+  // 等待页面完全加载后再初始化
+  function waitForTableAndInit() {
+    console.log('=== Column Selector Initialization ===');
+    console.log('Storage key:', storageKey);
+    console.log('All available columns:', allColumns);
+    
+    // 先读取配置并设置复选框状态（不依赖表格）
+    let savedColumns = localStorage.getItem(storageKey);
+    let visibleColumns;
+    
+    if (savedColumns) {
+      try {
+        visibleColumns = JSON.parse(savedColumns);
+        console.log('✓ Found saved columns:', visibleColumns);
+        // 验证保存的列是否仍然存在于当前模型中
+        const originalCount = visibleColumns.length;
+        visibleColumns = visibleColumns.filter(function(col) {
+          return allColumns.includes(col);
+        });
+        console.log('  Filtered from', originalCount, 'to', visibleColumns.length, 'valid columns');
+        // 如果过滤后没有列了，使用所有列（默认配置，与 list_display 一致）
+        if (visibleColumns.length === 0) {
+          console.log('  ⚠ No valid saved columns, using all columns (default)');
+          visibleColumns = allColumns.slice();
+        }
+      } catch (e) {
+        console.error('✗ Error parsing saved columns:', e);
+        visibleColumns = allColumns.slice();
+      }
+    } else {
+      // 如果没有保存的配置，使用所有列（默认配置，与 list_display 一致）
+      console.log('ℹ No saved columns, using all columns (default, matches list_display)');
+      visibleColumns = allColumns.slice();
+    }
+    
+    console.log('Final visibleColumns to apply:', visibleColumns);
+    
+    // 立即设置复选框状态（不等待表格）
+    function setCheckboxStates() {
+      const checkboxes = document.querySelectorAll('.column-checkbox');
+      if (checkboxes.length > 0) {
+        let checkedCount = 0;
+        checkboxes.forEach(function(checkbox) {
+          const shouldBeChecked = visibleColumns.includes(checkbox.value);
+          checkbox.checked = shouldBeChecked;
+          if (shouldBeChecked) checkedCount++;
+        });
+        console.log('✓ Checkbox states set:', checkedCount, 'checked out of', checkboxes.length);
+      } else {
+        // 如果复选框还没渲染，等待一下
+        console.log('  Waiting for checkboxes to render...');
+        setTimeout(setCheckboxStates, 50);
+      }
+    }
+    setCheckboxStates();
+    
+    // 然后等待表格渲染后再应用显示/隐藏
+    function waitForTable() {
+      const table = document.getElementById('result_list');
+      const headers = table ? table.querySelectorAll('thead th') : [];
+      if (table && headers.length > 0) {
+        // 表格已渲染，应用列显示/隐藏
+        console.log('✓ Table found with', headers.length, 'headers, applying visibility...');
+        applyColumnVisibility(visibleColumns);
+        console.log('✓ Column visibility applied successfully');
+      } else {
+        // 表格还没渲染，等待一下
+        console.log('  Waiting for table to render...');
+        setTimeout(waitForTable, 100);
+      }
+    }
+    
+    if (document.readyState === 'complete') {
+      setTimeout(waitForTable, 100);
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(waitForTable, 200);
+      });
+    }
+  }
+  
+  // 如果 DOM 已经加载，立即初始化；否则等待 DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForTableAndInit);
+  } else {
+    waitForTableAndInit();
+  }
+  
+  // 保留原有的事件监听器代码
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // 阻止点击复选框和标签时关闭下拉菜单
+    const dropdownMenu = document.querySelector('#columnSelectorDropdown').nextElementSibling;
+    if (dropdownMenu) {
+      dropdownMenu.addEventListener('click', function(e) {
+        // 如果点击的是复选框、标签或 Apply 按钮，阻止事件冒泡
+        if (e.target.classList.contains('column-checkbox') || 
+            e.target.classList.contains('form-check-label') ||
+            e.target.closest('.form-check') ||
+            e.target.id === 'applyColumnBtn') {
+          e.stopPropagation();
+        }
+      });
+    }
+    
+    // Apply 按钮点击事件
+    const applyBtn = document.getElementById('applyColumnBtn');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyColumnSelection();
+      });
+    }
+  });
+  
+  // 应用列选择
+  function applyColumnSelection() {
+    const checkedColumns = Array.from(document.querySelectorAll('.column-checkbox:checked'))
+      .map(function(cb) { return cb.value; });
+    
+    // 至少保留一列
+    if (checkedColumns.length === 0) {
+      alert('{% trans "Please select at least one column to display." %}');
+      return;
+    }
+    
+    // 保存到 localStorage（使用外部的 storageKey 变量确保一致性）
+    localStorage.setItem(storageKey, JSON.stringify(checkedColumns));
+    console.log('Saved column config for', storageKey, ':', checkedColumns);
+    console.log('Verifying save:', localStorage.getItem(storageKey));
+    
+    // 更新 visibleColumns 变量以便后续使用
+    window.currentVisibleColumns = checkedColumns;
+    
+    // 应用显示/隐藏
+    applyColumnVisibility(checkedColumns);
+    
+    // 关闭下拉菜单
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.dropdown !== 'undefined') {
+      jQuery('#columnSelectorDropdown').dropdown('hide');
+    } else {
+      // 手动关闭下拉菜单
+      const dropdown = document.getElementById('columnSelectorDropdown');
+      if (dropdown) {
+        dropdown.classList.remove('show');
+        dropdown.setAttribute('aria-expanded', 'false');
+        const menu = dropdown.nextElementSibling;
+        if (menu && menu.classList.contains('dropdown-menu')) {
+          menu.classList.remove('show');
+        }
+      }
+    }
+  }
+  
+  // 导出到全局，以便调试
+  window.applyColumnSelection = applyColumnSelection;
+  
+  // 应用列显示/隐藏
+  function applyColumnVisibility(visibleColumns) {
+    const table = document.getElementById('result_list');
+    if (!table) {
+      console.warn('Table not found, cannot apply column visibility');
+      return;
+    }
+    
+    console.log('Applying visibility for columns:', visibleColumns);
+    
+    // 检查是否有 action_checkbox 列
+    const hasActionCheckbox = table.querySelector('thead th.action-checkbox-column') !== null;
+    const headerOffset = hasActionCheckbox ? 1 : 0;
+    
+    let hiddenHeaders = 0;
+    let shownHeaders = 0;
+    
+    // 处理表头
+    const headers = table.querySelectorAll('thead th');
+    headers.forEach(function(header, index) {
+      // 跳过 action_checkbox 和 action_buttons 列（固定列）
+      if (header.classList.contains('action-checkbox-column') || 
+          header.classList.contains('field-action_buttons')) {
+        return; // 固定列始终显示
+      }
+      
+      // 计算在 list_display 中的索引（排除 action_checkbox）
+      const displayIndex = index - headerOffset;
+      
+      // 通过索引找到对应的字段名
+      let fieldName = null;
+      for (const [field, origIndex] of Object.entries(fieldToIndexMap)) {
+        if (origIndex === displayIndex) {
+          fieldName = field;
+          break;
+        }
+      }
+      
+      if (fieldName !== null) {
+        if (!visibleColumns.includes(fieldName)) {
+          header.style.display = 'none';
+          hiddenHeaders++;
+        } else {
+          header.style.display = '';
+          shownHeaders++;
+        }
+      }
+    });
+    
+    let hiddenCells = 0;
+    let shownCells = 0;
+    
+    // 处理表格行
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(function(row) {
+      const cells = row.querySelectorAll('td');
+      cells.forEach(function(cell, index) {
+        // 跳过 action_checkbox 和 action_buttons 列（固定列）
+        if (cell.classList.contains('action-checkbox') || 
+            cell.classList.contains('field-action_buttons')) {
+          return; // 固定列始终显示
+        }
+        
+        // 计算在 list_display 中的索引（排除 action_checkbox）
+        const displayIndex = index - headerOffset;
+        
+        // 通过索引找到对应的字段名
+        let fieldName = null;
+        for (const [field, origIndex] of Object.entries(fieldToIndexMap)) {
+          if (origIndex === displayIndex) {
+            fieldName = field;
+            break;
+          }
+        }
+        
+        if (fieldName !== null) {
+          if (!visibleColumns.includes(fieldName)) {
+            cell.style.display = 'none';
+            hiddenCells++;
+          } else {
+            cell.style.display = '';
+            shownCells++;
+          }
+        }
+      });
+    });
+    
+    console.log('Visibility applied: Headers -', shownHeaders, 'shown,', hiddenHeaders, 'hidden');
+    console.log('Visibility applied: Cells -', shownCells, 'shown,', hiddenCells, 'hidden');
+  }
+})();
+</script>
+{% endif %}

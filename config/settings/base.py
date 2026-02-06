@@ -17,6 +17,7 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").sp
 
 INSTALLED_APPS = [
     "daphne",
+    "apps.admin_enhanced",  # Before django.contrib.admin so AdminLTE templates override
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -24,9 +25,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "channels",
-    "apps.admin_enhanced",
     "apps.logviewer",
     "apps.celery_monitor",
+    "apps.instances",
 ]
 
 MIDDLEWARE = [

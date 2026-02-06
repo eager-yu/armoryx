@@ -19,14 +19,19 @@ python3.12 manage.py check
 # 3. 数据库迁移
 python3.12 manage.py migrate
 
-# 4. 创建超级用户（用于登录 /admin/）
+# 4. 创建超级用户（用于登录后台）
 python3.12 manage.py createsuperuser
 
 # 5. 启动开发服务器
 python3.12 manage.py runserver
 ```
 
-浏览器访问 **http://127.0.0.1:8000/admin/** 应看到 Django 默认 admin 登录页。
+浏览器访问 **http://127.0.0.1:8000/** 应看到 AdminLTE 3 风格的登录页面。
+
+**注意**：本项目移除了 `/admin/` 前缀，所有 admin 功能直接在根路径下访问：
+- 根路径 `/`：登录页面（未登录）或 admin index（已登录）
+- `/instances/instance/`：实例列表（原 `/admin/instances/instance/`）
+- `/export/...`：导出功能（原 `/admin_enhanced/export/...`）
 
 ### ASGI（WebSocket 占位）
 

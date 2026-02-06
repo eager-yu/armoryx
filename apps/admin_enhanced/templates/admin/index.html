@@ -1,0 +1,42 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<!-- Dashboard placeholder (task 2.7) -->
+<div class="row mb-4">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-info">
+      <div class="inner">
+        <h3>–</h3>
+        <p>{% translate 'Widget placeholder' %}</p>
+      </div>
+      <div class="icon"><i class="fas fa-chart-line"></i></div>
+      <a href="{% url 'admin:index' %}" class="small-box-footer">{% translate 'Home' %} <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-success">
+      <div class="inner">
+        <h3>–</h3>
+        <p>{% translate 'Quick actions' %}</p>
+      </div>
+      <div class="icon"><i class="fas fa-bolt"></i></div>
+      <a href="{% url 'admin:index' %}" class="small-box-footer">{% translate 'Home' %} <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+</div>
+
+<!-- App list (changelist links) -->
+<div id="content-main" class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">{% translate 'Application list' %}</h3>
+      </div>
+      <div class="card-body p-0">
+        {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

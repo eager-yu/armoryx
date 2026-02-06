@@ -1,0 +1,22 @@
+{% if show %}
+<nav class="d-inline-flex align-items-center">
+  {% block date-hierarchy-toplinks %}
+    {% block date-hierarchy-back %}
+      {% if back %}
+        <a href="{{ back.link }}" class="btn btn-sm btn-outline-secondary mr-1">
+          <i class="fas fa-arrow-left"></i> {{ back.title }}
+        </a>
+      {% endif %}
+    {% endblock %}
+    {% block date-hierarchy-choices %}
+      {% for choice in choices %}
+        {% if choice.link %}
+          <a href="{{ choice.link }}" class="btn btn-sm btn-outline-primary mr-1">{{ choice.title }}</a>
+        {% else %}
+          <span class="btn btn-sm btn-outline-secondary disabled mr-1">{{ choice.title }}</span>
+        {% endif %}
+      {% endfor %}
+    {% endblock %}
+  {% endblock %}
+</nav>
+{% endif %}

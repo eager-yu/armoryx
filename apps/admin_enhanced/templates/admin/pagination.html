@@ -1,0 +1,30 @@
+{% load admin_list %}
+{% load i18n %}
+{% if pagination_required %}
+<nav aria-label="Page navigation" class="adminlte-pagination">
+  <ul class="pagination pagination-sm mb-0">
+    {% for i in page_range %}
+      {% if i == cl.paginator.ELLIPSIS %}
+        <li class="page-item disabled">
+          <span class="page-link">{{ cl.paginator.ELLIPSIS }}</span>
+        </li>
+      {% elif i == cl.page_num %}
+        <li class="page-item active">
+          <span class="page-link">{{ i }} <span class="sr-only">(current)</span></span>
+        </li>
+      {% else %}
+        <li class="page-item">
+          {% paginator_number cl i %}
+        </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% if show_all_url %}
+<div class="mt-2">
+  <small class="text-muted">
+    <a href="{{ show_all_url }}">{% translate 'Show all' %}</a>
+  </small>
+</div>
+{% endif %}

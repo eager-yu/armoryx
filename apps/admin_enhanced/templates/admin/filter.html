@@ -1,0 +1,11 @@
+{% load i18n %}
+<div class="form-group mb-3">
+  <label for="filter-{{ title|slugify }}">{% blocktranslate with filter_title=title %}By {{ filter_title }}{% endblocktranslate %}</label>
+  <select id="filter-{{ title|slugify }}" class="form-control form-control-sm" onchange="if(this.value) { window.location.href = this.value; }">
+    {% for choice in choices %}
+      <option value="{{ choice.query_string|iriencode }}"{% if choice.selected %} selected{% endif %}>
+        {{ choice.display }}
+      </option>
+    {% endfor %}
+  </select>
+</div>

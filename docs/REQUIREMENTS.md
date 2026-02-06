@@ -149,6 +149,50 @@ armoryx/
 - 使用 `ProtocolTypeRouter`：`http` 交给 Django ASGI，`websocket` 交给 Channels 的 WebSocket 路由。
 - WebSocket 路由指向 logviewer 的 Consumer。
 
+### 6.3 urls.py（URL 配置）
+
+**特殊配置**：移除所有 `/admin/` 前缀，根路径直接显示登录页面。
+
+#### URL 结构
+
+- **根路径 `/`**：直接显示登录页面（未登录）或 admin index（已登录）
+- **登录路径 `/login/`**：自定义 AdminLTE 3 风格登录页面
+- **Admin URLs**：移除 `/admin/` 前缀，直接在根路径下
+  - 例如：`/instances/instance/`（原 `/admin/instances/instance/`）
+  - `/logout/`、`/jsi18n/` 等也在根路径下
+- **导出功能**：`/export/<app_label>/<model_name>/<format>/`（原 `/admin_enhanced/export/...`）
+
+#### 实现要点
+
+1. **自定义登录视图**：`CustomAdminLoginView` 使用自定义模板 `admin/login.html`
+2. **根路径处理**：`root_login` 视图根据用户认证状态显示登录页面或 admin index
+3. **Admin URLs 集成**：
+   - Django 6.0 中 `admin.site.urls` 返回 `(patterns, app_name, namespace)` 元组
+   - 需要手动解包并过滤掉根路径和登录路径（已被自定义视图覆盖）
+   - 使用 `include()` 注册 namespace，传递 2-tuple `(filtered_patterns, app_name)` 和 `namespace` 参数
+4. **Namespace 注册**：确保 'admin' namespace 正确注册，以便模板中的 `{% url 'admin:index' %}` 等 URL 反向解析正常工作
+
+#### 代码示例
+
+```python
+# 根路径和登录路径覆盖
+urlpatterns = [
+    path("", root_login, name="root"),
+    path("login/", CustomAdminLoginView.as_view(), name="login"),
+    path("export/", include("apps.admin_enhanced.urls")),
+]
+
+# Admin URLs - 移除 /admin/ 前缀
+admin_urls_tuple = admin.site.urls
+if isinstance(admin_urls_tuple, tuple) and len(admin_urls_tuple) == 3:
+    admin_patterns, app_name, namespace = admin_urls_tuple
+    # 过滤掉根路径和登录路径
+    filtered_patterns = [p for p in admin_patterns 
+                        if getattr(p.pattern, '_route', '') not in ('', 'login/')]
+    if filtered_patterns:
+        urlpatterns.append(path("", include((filtered_patterns, app_name), namespace=namespace)))
+```
+
 ---
 
 ## 7. 开发顺序概览
@@ -176,7 +220,8 @@ armoryx/
 | 1.3  | 依赖清单     | 编写 `requirements/base.txt`、`dev.txt`（Django、Channels、Celery 等） | `pip3.12 install -r requirements/base.txt` 成功 |
 | 1.4  | asgi.py 占位 | `ProtocolTypeRouter`，http 走 Django，websocket 路由占位 | ASGI 可被 Daphne 加载，WebSocket 可连接 |
 | 1.5  | apps 占位    | 创建 `admin_enhanced`、`logviewer`、`celery_monitor` 并加入 `INSTALLED_APPS` | `manage.py check` 通过；可 `runserver` |
-| 1.6  | 默认 admin   | 确保 `/admin/` 可登录并使用 | 访问 `/admin/` 可见默认 admin 登录页 |
+| 1.6  | 默认 admin   | 确保根路径可登录并使用 | 访问 `/` 可见登录页，登录后进入 admin |
+| 1.7  | URL 配置优化 | 移除 `/admin/` 前缀，根路径直接显示登录页面 | 访问 `/` 显示登录页；所有 admin URLs 在根路径下 |
 
 ---
 
@@ -240,13 +285,13 @@ armoryx/
 
 ### 任务索引
 
-- **阶段 1**：1.1～1.6（6 项）
+- **阶段 1**：1.1～1.7（7 项）
 - **阶段 2**：2.1～2.8（8 项）
 - **阶段 3**：3.1～3.8（8 项）
 - **阶段 4**：4.1～4.7（7 项）
 - **阶段 5**：5.1～5.7（7 项）
 
-合计 **36 项** 可验收子任务。
+合计 **37 项** 可验收子任务。
 
 ---
 

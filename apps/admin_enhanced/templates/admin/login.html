@@ -1,0 +1,223 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="{{ request.LANGUAGE_CODE|default:'zh-hans' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <title>{% translate 'Log in' %} | {{ site_title|default:_('Django site admin') }}</title>
+  <!-- Bootstrap 4 (AdminLTE 3 dependency) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" crossorigin="anonymous">
+  <!-- Font Awesome 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <!-- AdminLTE 3 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css" crossorigin="anonymous">
+  <style>
+    .login-page {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-box {
+      width: 100%;
+      max-width: 360px;
+      margin: auto;
+    }
+    .login-logo {
+      font-size: 2.1rem;
+      font-weight: 300;
+      margin-bottom: 0.9rem;
+      text-align: center;
+    }
+    .login-logo a {
+      color: #fff;
+      text-decoration: none;
+    }
+    .login-logo a:hover {
+      color: #f0f0f0;
+    }
+    .login-card-body {
+      background: #fff;
+      border-top: 0;
+      color: #666;
+      padding: 20px;
+      border-radius: 0 0 0.25rem 0.25rem;
+    }
+    .login-box-msg {
+      margin: 0;
+      padding: 0 20px 20px;
+      text-align: center;
+      color: #666;
+      font-size: 1rem;
+    }
+    .card {
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+      border-radius: 0.25rem;
+      border: 0;
+    }
+    .input-group-text {
+      background-color: #f8f9fa;
+      border-color: #ced4da;
+    }
+    .form-control:focus {
+      border-color: #80bdff;
+      box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+    .btn-primary {
+      background-color: #007bff;
+      border-color: #007bff;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+      border-color: #0056b3;
+    }
+    @media (max-width: 576px) {
+      .login-box {
+        width: 100%;
+        padding: 0 15px;
+      }
+    }
+  </style>
+</head>
+<body class="hold-transition login-page">
+<div class="login-box">
+  <div class="login-logo">
+    <a href="{% url 'admin:index' %}">
+      <b>{{ site_header|default:_('Django') }}</b> {% translate 'Admin' %}
+    </a>
+  </div>
+  <!-- /.login-logo -->
+  <div class="card">
+    <div class="card-body login-card-body">
+      <p class="login-box-msg">{% translate 'Sign in to start your session' %}</p>
+
+      {% if form.errors and not form.non_field_errors %}
+        <div class="alert alert-danger alert-dismissible fade show">
+          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+          {% if form.errors.items|length == 1 %}
+            {% translate "Please correct the error below." %}
+          {% else %}
+            {% translate "Please correct the errors below." %}
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+            {{ error }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if user.is_authenticated %}
+        <div class="alert alert-warning">
+          {% blocktranslate trimmed with username=user.get_username %}
+            You are authenticated as {{ username }}, but are not authorized to
+            access this page. Would you like to login to a different account?
+          {% endblocktranslate %}
+        </div>
+      {% endif %}
+
+      <form action="{{ app_path }}" method="post" id="login-form">
+        {% csrf_token %}
+        
+        <div class="input-group mb-3">
+          <input type="text" 
+                 name="{{ form.username.name }}" 
+                 class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                 placeholder="{% translate 'Username' %}" 
+                 required 
+                 autofocus
+                 value="{% if form.username.value %}{{ form.username.value }}{% endif %}">
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <span class="fas fa-user"></span>
+            </div>
+          </div>
+          {% if form.username.errors %}
+            <div class="invalid-feedback">
+              {{ form.username.errors.0 }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="input-group mb-3">
+          <input type="password" 
+                 name="{{ form.password.name }}" 
+                 class="form-control {% if form.password.errors %}is-invalid{% endif %}" 
+                 placeholder="{% translate 'Password' %}" 
+                 required>
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <span class="fas fa-lock"></span>
+            </div>
+          </div>
+          {% if form.password.errors %}
+            <div class="invalid-feedback">
+              {{ form.password.errors.0 }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="row">
+          <div class="col-8">
+            {% if form.remember_me %}
+              <div class="icheck-primary">
+                {{ form.remember_me }}
+                <label for="{{ form.remember_me.id_for_label }}">
+                  {% translate 'Remember me' %}
+                </label>
+              </div>
+            {% else %}
+              <div class="icheck-primary">
+                <input type="checkbox" id="remember" name="remember">
+                <label for="remember">
+                  {% translate 'Remember me' %}
+                </label>
+              </div>
+            {% endif %}
+          </div>
+          <!-- /.col -->
+          <div class="col-4">
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fas fa-sign-in-alt"></i> {% translate 'Sign In' %}
+            </button>
+          </div>
+          <!-- /.col -->
+        </div>
+        
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+      </form>
+
+      {% if password_reset_url %}
+      <p class="mb-1 mt-3">
+        <a href="{{ password_reset_url }}">{% translate 'I forgot my password' %}</a>
+      </p>
+      {% endif %}
+    </div>
+    <!-- /.login-card-body -->
+  </div>
+</div>
+<!-- /.login-box -->
+
+<!-- jQuery -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" crossorigin="anonymous"></script>
+<!-- Bootstrap 4 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<!-- AdminLTE App -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
+<script>
+  $(function () {
+    // 自动聚焦到用户名输入框
+    $('input[name="{{ form.username.name }}"]').focus();
+  });
+</script>
+</body>
+</html>

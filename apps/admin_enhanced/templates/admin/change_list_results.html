@@ -1,0 +1,67 @@
+{% load i18n admin_enhanced %}
+{% if result_hidden_fields %}
+<div class="hiddenfields">
+  {% for item in result_hidden_fields %}{{ item }}{% endfor %}
+</div>
+{% endif %}
+
+{% if results %}
+<div class="table-responsive">
+  <table id="result_list" class="table table-bordered table-striped table-hover">
+    <thead class="thead-light">
+      <tr>
+        {% for header in result_headers %}
+        <th scope="col"{{ header.class_attrib }}>
+          <div class="d-flex align-items-center">
+            {% if header.sortable %}
+              <a href="{{ header.url_primary }}" class="text-dark text-decoration-none flex-grow-1">
+                {{ header.text|capfirst }}
+              </a>
+              {% if header.sort_priority > 0 %}
+                <div class="ml-2">
+                  <a href="{{ header.url_toggle }}" class="text-muted" title="{% translate 'Toggle sorting' %}">
+                    <i class="fas fa-sort-{{ header.ascending|yesno:'up,down' }}"></i>
+                  </a>
+                  {% if num_sorted_fields > 1 %}
+                    <span class="badge badge-secondary badge-sm">{{ header.sort_priority }}</span>
+                  {% endif %}
+                  <a href="{{ header.url_remove }}" class="text-danger ml-1" title="{% translate 'Remove from sorting' %}">
+                    <i class="fas fa-times"></i>
+                  </a>
+                </div>
+              {% else %}
+                <a href="{{ header.url_primary }}" class="text-muted ml-2" title="{% translate 'Sort' %}">
+                  <i class="fas fa-sort"></i>
+                </a>
+              {% endif %}
+            {% else %}
+              <span>{{ header.text|capfirst }}</span>
+            {% endif %}
+          </div>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for result in results %}
+        {% if result.form and result.form.non_field_errors %}
+          <tr>
+            <td colspan="{{ result|length }}" class="alert-danger">
+              {{ result.form.non_field_errors }}
+            </td>
+          </tr>
+        {% endif %}
+        <tr>
+          {% for item in result %}
+            {{ item }}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle"></i> {% translate "No items found." %}
+  </div>
+{% endif %}

@@ -1,0 +1,54 @@
+{% load i18n %}
+
+{% if app_list %}
+  {% for app in app_list %}
+    <div class="card card-primary card-outline mb-3">
+      <div class="card-header">
+        <h3 class="card-title">
+          <a href="{{ app.app_url }}" class="text-white text-decoration-none">{{ app.name }}</a>
+        </h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <tbody>
+            {% for model in app.models %}
+              <tr>
+                <td style="width: 40%;">
+                  {% if model.admin_url %}
+                    <a href="{{ model.admin_url }}">{{ model.name }}</a>
+                  {% else %}
+                    {{ model.name }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if model.add_url %}
+                    <a href="{{ model.add_url }}" class="btn btn-sm btn-success">
+                      <i class="fas fa-plus"></i> {% translate 'Add' %}
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if model.admin_url and show_changelinks %}
+                    {% if model.view_only %}
+                      <a href="{{ model.admin_url }}" class="btn btn-sm btn-info">
+                        <i class="fas fa-eye"></i> {% translate 'View' %}
+                      </a>
+                    {% else %}
+                      <a href="{{ model.admin_url }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-edit"></i> {% translate 'Change' %}
+                      </a>
+                    {% endif %}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle"></i> {% translate "You don't have permission to view or edit anything." %}
+  </div>
+{% endif %}

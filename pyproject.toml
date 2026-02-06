@@ -1,0 +1,6 @@
+[project]
+name = "armoryx"
+version = "0.1.0"
+description = "Django 6.0.2 高级后台管理系统（xadmin 2.0 计划）"
+readme = "README.md"
+requires-python = ">=3.12"

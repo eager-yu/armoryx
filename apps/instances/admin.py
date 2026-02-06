@@ -13,6 +13,7 @@ class InstanceAdmin(ReadonlyMixin, admin.ModelAdmin):
         "instance_name",
         "account",
         "region",
+        "vpc",
         "ip",
         "state",
         "security_groupid",
@@ -30,6 +31,7 @@ class InstanceAdmin(ReadonlyMixin, admin.ModelAdmin):
         "instance_name",
         "account",
         "ip",
+        "vpc__vpc_id",
         "security_groupid",
     ]
     readonly_fields = ["create_time"]

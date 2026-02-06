@@ -399,6 +399,22 @@ def view_object_modal(request, app_label, model_name, object_id):
             'opts': model._meta,
         }
         
+        # For Vpc: add related instances (instances in this VPC)
+        if app_label == 'vpc' and model_name == 'vpc':
+            try:
+                Instance = apps.get_model('instances', 'Instance')
+                related_instances = list(
+                    Instance.objects.filter(vpc=obj).values('id', 'instance_id', 'instance_name', 'ip')
+                )
+                context['related_instances'] = related_instances
+                context['related_instances_label'] = _('Instances in this VPC')
+                context['show_vpc_instances'] = True
+            except Exception:
+                context['related_instances'] = []
+                context['show_vpc_instances'] = True
+        else:
+            context['show_vpc_instances'] = False
+        
         try:
             html = render_to_string('admin/includes/view_modal_simple.html', context, request=request)
             return HttpResponse(html)

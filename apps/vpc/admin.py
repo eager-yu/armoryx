@@ -4,10 +4,29 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from apps.admin_enhanced.admin import ReadonlyMixin
 from .models import Vpc
+from apps.instances.models import Instance
+
+
+class InstanceInline(admin.TabularInline):
+    """VPC 下的实例列表（只读）"""
+    model = Instance
+    fk_name = "vpc"
+    fields = ["instance_id", "instance_name", "ip"]
+    readonly_fields = ["instance_id", "instance_name", "ip"]
+    extra = 0
+    can_delete = False
+    show_change_link = True
+    verbose_name = _("Instance")
+    verbose_name_plural = _("Instances under this VPC")
+    max_num = 0
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Vpc)
 class VpcAdmin(ReadonlyMixin, admin.ModelAdmin):
+    inlines = [InstanceInline]
     list_display = [
         "vpc_id",
         "vpc_name",

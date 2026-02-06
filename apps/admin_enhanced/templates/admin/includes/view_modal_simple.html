@@ -1,4 +1,4 @@
-{% load i18n admin_enhanced %}
+{% load i18n admin_enhanced admin_urls %}
 <div class="readonly-view">
   {% for fieldset in fieldsets %}
     {% if fieldset.name %}
@@ -51,4 +51,46 @@
     </div>
     {% endif %}
   {% endfor %}
+  
+  {% if show_vpc_instances %}
+  <div class="card card-outline card-info mb-3 mt-3">
+    <div class="card-header">
+      <h3 class="card-title">
+        <i class="fas fa-server"></i> {{ related_instances_label|default:"Instances in this VPC" }}
+      </h3>
+    </div>
+    <div class="card-body p-0">
+      {% if related_instances %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>{% translate "Instance ID" %}</th>
+              <th>{% translate "Instance Name" %}</th>
+              <th>{% translate "IP Address" %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inst in related_instances %}
+            <tr>
+              <td>{{ inst.instance_id }}</td>
+              <td>{{ inst.instance_name }}</td>
+              <td>{{ inst.ip }}</td>
+              <td>
+                <a href="/instances/instance/{{ inst.id }}/change/" class="btn btn-sm btn-outline-primary" target="_blank">
+                  <i class="fas fa-external-link-alt"></i> {% translate "View" %}
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0 p-3">{% translate "No instances in this VPC." %}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>

@@ -41,6 +41,16 @@ class Instance(models.Model):
         help_text=_("安全组ID")
     )
     
+    vpc = models.ForeignKey(
+        "vpc.Vpc",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="instances",
+        verbose_name=_("VPC"),
+        help_text=_("所属 VPC"),
+    )
+    
     STATE_CHOICES = [
         ("running", _("Running")),
         ("stopped", _("Stopped")),

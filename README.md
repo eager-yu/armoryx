@@ -4,26 +4,29 @@ Django 6.0.2 高级后台管理系统（xadmin 2.0 计划）。需求与任务�
 
 ## 环境
 
-- **Python 3.12**（Django 6.0.2 要求）
+- **Python 3.12**（Django 6.0.2 要求，项目使用 Python 3.12）
 - Redis（Channels / Celery 使用，阶段 3/5 需要）
 
 ## 阶段 1 验收（搭建项目）
 
+以下命令使用 **Python 3.12**。Linux/macOS 上多为 `python3.12`，Windows 上若已安装 3.12 则通常为 `python`。请先确认：`python --version` 或 `python3.12 --version` 为 3.12.x。
+
 ```powershell
-# 1. 安装依赖（使用 python3.12 / pip3.12）
-pip3.12 install -r requirements/base.txt
+# 1. 安装依赖（使用 Python 3.12）
+python -m pip install -r requirements/base.txt
+# 或: py -3.12 -m pip install -r requirements/base.txt   # Windows 多版本时
 
 # 2. 检查项目
-python3.12 manage.py check
+python manage.py check
 
 # 3. 数据库迁移
-python3.12 manage.py migrate
+python manage.py migrate
 
 # 4. 创建超级用户（用于登录后台）
-python3.12 manage.py createsuperuser
+python manage.py createsuperuser
 
 # 5. 启动开发服务器
-python3.12 manage.py runserver
+python manage.py runserver
 ```
 
 浏览器访问 **http://127.0.0.1:8000/** 应看到 AdminLTE 3 风格的登录页面。
